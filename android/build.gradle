@@ -1,0 +1,83 @@
+// Top-level build file where you can add configuration options common to all sub-projects/modules.
+
+import groovy.json.JsonSlurper
+
+def releaseSigningPropsFile = rootProject.file("../credentials/android_signing_config.json")
+def releaseSigningProps = null
+if (releaseSigningPropsFile.exists()) {
+    println("Found release signing config info file.")
+    releaseSigningProps = new JsonSlurper().parseText(releaseSigningPropsFile.text)
+}else{
+    println("Release signing config file does not exist.")
+}
+
+def packageJsonFile = rootProject.file("../package.json")
+def packageJson = new JsonSlurper().parseText(packageJsonFile.text)
+def _npmVersion = packageJson.version
+println("npm package version (used as versionName): " + _npmVersion)
+
+/* calculated from git commits to give sequential integers */
+def gitCountProcessResult = "git rev-list master --first-parent --count".execute()
+def _gitCount = gitCountProcessResult.text.toInteger()
+println("git revision count (used as versionCode): " + _gitCount)
+
+
+def bugsnagCredentialConfigFile = rootProject.file('../credentials/bugsnag.json')
+def _bugsnagApiKey = null
+if(bugsnagCredentialConfigFile.exists()){
+    def props = new JsonSlurper().parseText(bugsnagCredentialConfigFile.text)
+    if(props != null && props.api_key != null){
+        println("found bugsnag api key: " + props.api_key)
+        _bugsnagApiKey = props.api_key
+    }
+}
+
+buildscript {
+    ext {
+        buildToolsVersion = "29.0.3"
+        minSdkVersion = 21
+        compileSdkVersion = 29
+        targetSdkVersion = 29
+        ndkVersion = "20.1.5948944"
+    }
+    repositories {
+        google()
+        jcenter()
+    }
+    dependencies {
+        classpath('com.android.tools.build:gradle:4.1.3')
+        // NOTE: Do not place your application dependencies here; they belong
+        // in the individual module build.gradle files
+        classpath 'com.bugsnag:bugsnag-android-gradle-plugin:5.6.0'
+    }
+}
+
+allprojects {
+    project.ext {
+        releaseSigningProperties = releaseSigningProps
+        npmVersion = _npmVersion
+        gitCount = _gitCount
+        bugsnagApiKey = _bugsnagApiKey
+    }
+
+    repositories {
+        mavenLocal()
+        maven {
+            // All of React Native (JS, Obj-C sources, Android binaries) is installed from npm
+            url("$rootDir/../node_modules/react-native/android")
+        }
+        maven {
+            // Android JSC is installed from npm
+            url("$rootDir/../node_modules/jsc-android/dist")
+        }
+
+        maven {
+            //Microsoft Speech service
+            url 'https://csspeechstorage.blob.core.windows.net/maven/'
+        }
+
+        google()
+        jcenter()
+        maven { url 'https://www.jitpack.io' }
+    }
+}
